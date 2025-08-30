@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: galgje
+    env: node
+    plan: free
+    region: frankfurt
+    buildCommand: |
+      cd client && npm install && npm run build
+      cd ../server && npm install
+    startCommand: "cd server && node index.js"
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.1
