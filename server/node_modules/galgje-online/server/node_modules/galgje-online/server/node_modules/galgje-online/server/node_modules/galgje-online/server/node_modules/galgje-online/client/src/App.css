@@ -1,10 +1,19 @@
 /* Basic styling for the game */
 
+body {
+    background-color: #f0f0f0; /* Light gray background */
+    font-family: 'Arial', sans-serif; /* A more modern font */
+    color: #333; /* Darker text for contrast */
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  background-color: #ffffff; /* White background for the main content area */
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .game-container {
@@ -14,24 +23,341 @@
   gap: 20px;
 }
 
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.quit-button {
+    background-color: #dc3545; /* Red for quit/cancel actions */
+    font-size: 0.9em;
+    padding: 8px 15px;
+}
+
+.quit-button:hover {
+    background-color: #c82333;
+}
+
+
+/* Text styling */
+h1 {
+    color: #5a2d00; /* Dark brown for headings, matching wood */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
 .word-display {
-  letter-spacing: 0.5em;
-  font-size: 2em;
+    letter-spacing: 0.5em;
+    font-size: 2.5em; /* Slightly larger */
+    font-weight: bold;
+    color: #007bff; /* A distinct color for the word */
+}
+
+p {
+    font-size: 1.1em;
+    line-height: 1.5;
 }
 
 .guessed-letters {
   font-size: 1.2em;
 }
 
-.keyboard button {
-    margin: 5px;
-    padding: 10px 15px;
-    font-size: 1em;
-    cursor: pointer;
+/* Keyboard styling */
+.keyboard {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px; /* Space between buttons */
+    margin-top: 20px;
 }
 
-.hangman-drawing {
-    font-family: monospace;
-    white-space: pre;
+.keyboard button {
+    margin: 0; /* Remove individual button margin */
+    padding: 12px 18px; /* More padding */
+    font-size: 1.1em;
+    font-weight: bold;
+    background-color: #8B4513; /* Brown color for buttons */
+    color: white;
+    border: none;
+    border-radius: 8px; /* Rounded corners */
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.keyboard button:hover:not(:disabled) {
+    background-color: #a0522d; /* Darker brown on hover */
+    transform: translateY(-2px); /* Slight lift effect */
+}
+
+.keyboard button:disabled {
+    background-color: #cccccc; /* Gray for disabled buttons */
+    color: #666666;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Input fields */
+input[type="text"] {
+    padding: 10px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+
+/* Buttons (general) */
+button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.hangman-drawing-container {
+    position: relative;
+    width: 250px; /* Adjust as needed */
+    height: 250px; /* Adjust as needed */
+    margin: 20px auto;
+}
+
+.gallows-base {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 20px;
+}
+
+.gallows-upright {
+    position: absolute;
+    bottom: 20px; /* Above the base */
+    left: calc(50% - 65px); /* Adjust to align with base */
+    width: 20px;
+    height: 180px;
+}
+
+.gallows-top {
+    position: absolute;
+    top: 30px; /* Adjust to align with upright */
+    left: calc(50% - 65px); /* Same as upright */
+    width: 100px;
+    height: 20px;
+}
+
+.gallows-rope {
+    position: absolute;
+    top: 50px;
+    left: calc(50% + 5px); /* Adjust to hang from the top beam */
+    width: 2px;
+    height: 30px;
+    background-color: black;
+}
+
+/* Hangman body parts - simple circles/rectangles for now */
+.hangman-part {
+    position: absolute;
+    background-color: black;
+}
+
+.head {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    top: 85px;
+    left: calc(50% + 5px); /* Adjust to hang from rope */
+    transform: translateX(-50%);
+}
+
+.body {
+    width: 4px;
+    height: 50px;
+    top: 120px;
+    left: calc(50% + 5px);
+    transform: translateX(-50%);
+}
+
+.left-arm {
+    width: 30px;
+    height: 4px;
+    top: 140px;
+    left: calc(50% - 25px);
+    transform: rotate(45deg);
+    transform-origin: right center;
+}
+
+.right-arm {
+    width: 30px;
+    height: 4px;
+    top: 140px;
+    left: calc(50% + 5px);
+    transform: rotate(-45deg);
+    transform-origin: left center;
+}
+
+.left-leg {
+    width: 30px;
+    height: 4px;
+    top: 170px;
+    left: calc(50% - 25px);
+    transform: rotate(-45deg);
+    transform-origin: right center;
+}
+
+.right-leg {
+    width: 30px;
+    height: 4px;
+    top: 170px;
+    left: calc(50% + 5px);
+    transform: rotate(45deg);
+    transform-origin: left center;
+}
+
+/* Popup styling */
+.popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black overlay */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Ensure it's on top of other content */
+}
+
+.popup-content {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.popup-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #5a2d00;
+}
+
+.popup-content button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.popup-content button:hover {
+    background-color: #0056b3;
+}
+
+/* Start Screen Styling */
+.start-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 30px;
+    background-color: #f8f8f8;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.start-screen h1 {
+    margin-bottom: 20px;
+    color: #5a2d00;
+}
+
+.start-screen button {
+    padding: 12px 25px;
+    font-size: 1.1em;
+    background-color: #28a745; /* Green for start game */
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.start-screen button:hover {
+    background-color: #218838;
+}
+
+.join-game-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    width: 100%;
+}
+
+.join-game-section input {
+    width: 80%;
+    max-width: 250px;
+    text-align: center;
+}
+
+.join-game-section button {
+    background-color: #007bff; /* Blue for join game */
+}
+
+.join-game-section button:hover {
+    background-color: #0056b3;
+}
+
+/* Word Setter Screen Styling */
+.word-setter-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 30px;
+    background-color: #f8f8f8;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.word-setter-screen h2 {
+    color: #5a2d00;
+}
+
+.word-setter-screen p {
+    font-size: 1.1em;
+    color: #555;
+}
+
+.secret-word-display {
     font-size: 1.2em;
+    font-weight: bold;
+    color: #dc3545; /* Red for secret word */
+    margin-top: 10px;
+}
+
+.game-id-display {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+.game-code-display {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 10px;
 }

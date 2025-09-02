@@ -1,57 +1,130 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
-const socket = io();
+// Importeer de componenten
+import StartScreen from './components/StartScreen';
+import WordSetterScreen from './components/WordSetterScreen';
+import GameScreen from './components/GameScreen';
+import GameOverPopup from './components/GameOverPopup';
+
+const socket = io('http://localhost:3001');
+
+// Helper om state uit sessionStorage te halen
+const getInitialState = (key, defaultValue) => {
+  const storedValue = sessionStorage.getItem(key);
+  return storedValue ? JSON.parse(storedValue) : defaultValue;
+};
 
 function App() {
   const [gameState, setGameState] = useState(null);
-  const [gameId, setGameId] = useState('');
+  const [gameId, setGameId] = useState(() => getInitialState('gameId', ''));
   const [wordToSet, setWordToSet] = useState('');
-  const [isCreator, setIsCreator] = useState(false);
+  const [playerName, setPlayerName] = useState(() => getInitialState('playerName', ''));
+  const [socketId, setSocketId] = useState(null);
+  const [screen, setScreen] = useState(() => getInitialState('screen', 'start'));
+
+  // State opslaan in sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('gameId', JSON.stringify(gameId));
+  }, [gameId]);
 
   useEffect(() => {
+    sessionStorage.setItem('playerName', JSON.stringify(playerName));
+  }, [playerName]);
+
+  useEffect(() => {
+    // Sla niet 'loading' op, zodat we bij refresh opnieuw kunnen proberen te verbinden
+    if (screen !== 'loading') {
+      sessionStorage.setItem('screen', JSON.stringify(screen));
+    }
+  }, [screen]);
+
+  const resetGame = useCallback(() => {
+    // Maak state en sessionStorage leeg
+    setGameState(null);
+    setGameId('');
+    setWordToSet('');
+    setPlayerName('');
+    setScreen('start');
+    sessionStorage.removeItem('gameId');
+    sessionStorage.removeItem('playerName');
+    sessionStorage.removeItem('screen');
+    // Optioneel: de server informeren dat de speler het spel verlaat
+    if (gameId) {
+        socket.emit('leaveGame', { gameId, playerName });
+    }
+  }, [gameId, playerName]);
+
+  useEffect(() => {
+    const handleConnect = () => {
+      setSocketId(socket.id);
+      // Probeer opnieuw te verbinden als we sessiegegevens hebben
+      const storedGameId = getInitialState('gameId', '');
+      const storedPlayerName = getInitialState('playerName', '');
+      if (storedGameId && storedPlayerName) {
+        setScreen('loading');
+        socket.emit('reconnectGame', { gameId: storedGameId, playerName: storedPlayerName });
+      }
+    };
+
+    socket.on('connect', handleConnect);
+
     socket.on('gameUpdate', (newGameState) => {
       setGameState(newGameState);
+      const amICreator = newGameState.creator === socket.id;
+
+      if (newGameState.isGameOver) {
+        setScreen('game'); // Zorg ervoor dat het gamescherm wordt weergegeven met de popup
+      } else if (!newGameState.word) {
+        setScreen(amICreator ? 'wordSetter' : 'waiting');
+      } else {
+        setScreen('game');
+      }
     });
 
     socket.on('gameCreated', (newGameId) => {
         setGameId(newGameId);
-        setGameState({ message: `Spel aangemaakt! Deel deze code: ${newGameId}` });
+        setScreen('wordSetter');
     });
 
     socket.on('gameNotFound', () => {
-        alert('Spel niet gevonden!');
+        alert('Spel niet gevonden! Je wordt teruggestuurd naar het startscherm.');
+        resetGame();
     });
-
-    socket.on('wordIsSet', () => {
-        setIsCreator(false); // Now this player is a guesser
+    
+    socket.on('reconnectFailed', () => {
+        alert('Kon niet opnieuw verbinden met het spel. Probeer het opnieuw.');
+        resetGame();
     });
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('gameUpdate');
       socket.off('gameCreated');
       socket.off('gameNotFound');
-      socket.off('wordIsSet');
+      socket.off('reconnectFailed');
     };
-  }, []);
+  }, [resetGame]);
 
   const createGame = () => {
-    socket.emit('createGame');
-    setIsCreator(true);
+    if (!playerName) return alert('Voer een naam in.');
+    socket.emit('createGame', playerName);
+    setScreen('loading');
   };
 
   const joinGame = () => {
-    if (gameId) {
-      socket.emit('joinGame', gameId);
-    }
+    if (!playerName || !gameId) return alert('Voer een naam en spelcode in.');
+    socket.emit('joinGame', { gameId, playerName });
+    setScreen('loading');
   };
 
   const setWord = () => {
-      if (wordToSet) {
-          socket.emit('setWord', { gameId, word: wordToSet });
-          setWordToSet('');
-      }
+    if (wordToSet && gameId) {
+        socket.emit('setWord', { gameId, word: wordToSet });
+        setWordToSet('');
+        setScreen('loading');
+    }
   };
 
   const makeGuess = (letter) => {
@@ -59,135 +132,40 @@ function App() {
   };
 
   const renderContent = () => {
-    if (!gameState) {
+    const isCreator = gameState?.creator === socketId;
+
+    if (screen === 'game' && gameState?.isGameOver) {
       return (
-        <div>
-          <button onClick={createGame}>Nieuw Spel</button>
-          <hr />
-          <input 
-            type="text" 
-            placeholder="Voer spelcode in" 
-            value={gameId}
-            onChange={(e) => setGameId(e.target.value)}
-          />
-          <button onClick={joinGame}>Deelnemen</button>
-        </div>
+        <>
+          <GameScreen gameState={gameState} isCreator={isCreator} gameId={gameId} makeGuess={makeGuess} resetGame={resetGame} isDisabled={isCreator} />
+          <GameOverPopup gameState={gameState} isCreator={isCreator} resetGame={resetGame} />
+        </>
       );
     }
 
-    if (isCreator && !gameState.word) {
+    switch (screen) {
+      case 'start':
+        return <StartScreen createGame={createGame} gameId={gameId} setGameId={setGameId} joinGame={joinGame} playerName={playerName} setPlayerName={setPlayerName} />;
+      case 'wordSetter':
+        return <WordSetterScreen gameState={gameState} gameId={gameId} wordToSet={wordToSet} setWordToSet={setWordToSet} setWord={setWord} />;
+      case 'waiting':
         return (
-            <div>
-                <h2>{gameState.message}</h2>
-                <input 
-                    type="text" 
-                    placeholder="Voer het woord in" 
-                    value={wordToSet}
-                    onChange={(e) => setWordToSet(e.target.value)}
-                />
-                <button onClick={setWord}>Zet Woord</button>
-            </div>
-        )
+          <div className="waiting-screen">
+            <h2>Wachten op de spelleider om een woord in te stellen...</h2>
+            {gameState?.players && <p>Spelers: {gameState.players.map(p => p.name).join(', ')}</p>}
+          </div>
+        );
+      case 'game':
+        if (!gameState) return <div>Spel herstellen...</div>;
+        return <GameScreen gameState={gameState} isCreator={isCreator} gameId={gameId} makeGuess={makeGuess} resetGame={resetGame} isDisabled={isCreator} />;
+      case 'loading':
+        return <div>Laden...</div>;
+      default:
+        return <div>Laden...</div>;
     }
-
-    return (
-      <div className="game-container">
-        <h1>Galgje</h1>
-        <HangmanDrawing incorrectGuesses={gameState.incorrectGuesses.length} />
-        <p className="word-display">{gameState.word}</p>
-        <p>Foute gokken: {gameState.incorrectGuesses.join(', ')}</p>
-        <Keyboard onGuess={makeGuess} guessedLetters={gameState.correctGuesses.concat(gameState.incorrectGuesses)} />
-        {gameState.isGameOver && (
-            <h2>{gameState.isWinner ? 'Gewonnen!' : `Verloren! Het woord was: ${gameState.secretWord}`}</h2>
-        )}
-      </div>
-    );
   };
 
   return <div className="App">{renderContent()}</div>;
-}
-
-// --- Componenten ---
-
-const HangmanDrawing = ({ incorrectGuesses }) => {
-    const stages = [
-    `
-      +---+
-      |   |
-          |
-          |
-          |
-          |
-    =========`,
-    `
-      +---+
-      |   |
-      O   |
-          |
-          |
-          |
-    =========`,
-    `
-      +---+
-      |   |
-      O   |
-      |   |
-          |
-          |
-    =========`,
-    `
-      +---+
-      |   |
-      O   |
-     /|   |
-          |
-          |
-    =========`,
-    `
-      +---+
-      |   |
-      O   |
-     /|\  |
-          |
-          |
-    =========`,
-    `
-      +---+
-      |   |
-      O   |
-     /|\  |
-     /    |
-          |
-    =========`,
-    `
-      +---+
-      |   |
-      O   |
-     /|\  |
-     / \  |
-          |
-    =========`
-    ];
-
-    return <div className="hangman-drawing">{stages[incorrectGuesses]}</div>
-}
-
-const Keyboard = ({ onGuess, guessedLetters }) => {
-    const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
-
-    return (
-        <div className="keyboard">
-            {alphabet.map(letter => (
-                <button 
-                    key={letter} 
-                    onClick={() => onGuess(letter)}
-                    disabled={guessedLetters.includes(letter)}
-                >
-                    {letter}
-                </button>
-            ))}
-        </div>
-    )
 }
 
 export default App;
