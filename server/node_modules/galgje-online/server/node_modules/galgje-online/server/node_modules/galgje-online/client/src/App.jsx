@@ -8,7 +8,7 @@ import WordSetterScreen from './components/WordSetterScreen';
 import GameScreen from './components/GameScreen';
 import GameOverPopup from './components/GameOverPopup';
 
-const socket = io('http://localhost:3001');
+const socket = io();
 
 // Helper om state uit sessionStorage te halen
 const getInitialState = (key, defaultValue) => {
