@@ -9,8 +9,8 @@ import GameScreen from './components/GameScreen';
 import RoundOverPopup from './components/RoundOverPopup';
 import GameFinishedScreen from './components/GameFinishedScreen';
 
-const socket = io('http://localhost:3001');
-
+const socket = io();
+// const socket = io('http://localhost:3001');
 const getInitialState = (key, defaultValue) => {
   const storedValue = sessionStorage.getItem(key);
   return storedValue ? JSON.parse(storedValue) : defaultValue;
