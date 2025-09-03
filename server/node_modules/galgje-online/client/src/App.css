@@ -373,3 +373,47 @@ button:hover {
     color: #007bff;
     margin-bottom: 10px;
 }
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+
+  .game-container {
+    gap: 10px;
+  }
+
+  h1 {
+    font-size: 1.8em;
+  }
+
+  .word-display {
+    font-size: 2em;
+    letter-spacing: 0.3em;
+  }
+
+  .hangman-drawing-container {
+    width: 180px;
+    height: 180px;
+    margin: 10px auto;
+  }
+
+  .keyboard {
+    gap: 5px;
+    margin-top: 15px;
+  }
+
+  .keyboard button {
+    padding: 10px 12px;
+    font-size: 1em;
+  }
+
+  .turn-indicator {
+    font-size: 1em;
+  }
+
+  p {
+    font-size: 1em;
+  }
+}

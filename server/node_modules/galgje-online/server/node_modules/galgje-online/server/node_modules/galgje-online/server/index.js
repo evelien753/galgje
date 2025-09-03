@@ -24,32 +24,19 @@ function createWordDisplay(secretWord, correctGuesses) {
     return secretWord.split('').map(letter => (correctGuesses.includes(letter) ? letter : '_')).join(' ');
 }
 
-// Functie om de beurt door te geven aan de volgende actieve speler
 function advanceTurn(game) {
-    if (game.players.length < 2) {
-        game.currentPlayerIndex = 0; // Alleen de creator is over
-        return;
-    }
+    if (game.players.length < 2) return; // Kan de beurt niet doorgeven
 
     let nextIndex = game.currentPlayerIndex;
-    const originalIndex = game.currentPlayerIndex;
-
     do {
         nextIndex = (nextIndex + 1) % game.players.length;
-        // Sla de creator (index 0) altijd over in de normale beurt-rotatie
-        if (nextIndex === 0) {
-            nextIndex = 1;
-        }
-    } while (game.players[nextIndex].disconnected && nextIndex !== originalIndex);
-    
-    // Als we de hele cirkel hebben doorlopen en iedereen is disconnected, doe niets
-    if (nextIndex === originalIndex && game.players[nextIndex].disconnected) {
-        return;
-    }
+    } while (nextIndex === game.wordSetterIndex); // Sla altijd de woordzetter over
 
     game.currentPlayerIndex = nextIndex;
     console.log(`[Game ${game.id}] Advanced turn to player ${game.players[game.currentPlayerIndex].name}`);
 }
+
+
 
 io.on('connection', (socket) => {
   console.log('a user connected:', socket.id);
@@ -58,15 +45,19 @@ io.on('connection', (socket) => {
     const gameId = Math.random().toString(36).substring(2, 7);
     games[gameId] = {
       id: gameId,
-      creator: socket.id,
-      players: [{ id: socket.id, name: playerName, disconnected: false }],
+      creator: socket.id, // De oorspronkelijke maker, voor het geval dat nodig is
+      players: [{ id: socket.id, name: playerName, score: 0 }], // Score bijhouden
       secretWord: null,
       word: '',
       correctGuesses: [],
       incorrectGuesses: [],
-      isGameOver: false,
-      isWinner: false,
-      currentPlayerIndex: 0, // Creator is op index 0
+      isRoundOver: false,
+      roundWinner: null, // 'setter' or 'guesser'
+      roundMessage: '', // bv. "Woord geraden!" of "Helaas, te veel foute gokken."
+      currentPlayerIndex: 0, // De index van de speler die aan de beurt is om te raden
+      wordSetterIndex: 0, // De index van de speler die het woord zet
+      currentRound: 1,
+      isGameFinished: false, // Wordt true als alle rondes gespeeld zijn
     };
     socket.join(gameId);
     socket.emit('gameCreated', gameId);
@@ -79,7 +70,7 @@ io.on('connection', (socket) => {
     if (game) {
       let player = game.players.find(p => p.name === playerName);
       if (!player) {
-        player = { id: socket.id, name: playerName, disconnected: false };
+        player = { id: socket.id, name: playerName, score: 0 };
         game.players.push(player);
       }
 
@@ -117,15 +108,13 @@ io.on('connection', (socket) => {
 
   socket.on('setWord', ({ gameId, word }) => {
     const game = games[gameId];
-    if (game && game.creator === socket.id) {
+    // Controleer of de zender de huidige woordzetter is
+    if (game && game.players[game.wordSetterIndex].id === socket.id) {
       game.secretWord = word.toLowerCase();
       game.word = createWordDisplay(game.secretWord, game.correctGuesses);
       
-      // Start de beurt bij de eerste rader (index 1), indien aanwezig.
-      // Anders blijft de creator (index 0) de 'actieve' speler.
-      if (game.players.length > 1) {
-          game.currentPlayerIndex = 1;
-      }
+      // Bepaal wie de eerste rader is. Sla de woordzetter over.
+      game.currentPlayerIndex = (game.wordSetterIndex + 1) % game.players.length;
       
       console.log(`Word set for game ${gameId}. Turn starts with player ${game.players[game.currentPlayerIndex].name}`);
       io.to(gameId).emit('gameUpdate', game);
@@ -134,7 +123,7 @@ io.on('connection', (socket) => {
 
   socket.on('makeGuess', ({ gameId, letter }) => {
     const game = games[gameId];
-    if (!game || game.isGameOver) return;
+    if (!game || game.isRoundOver) return;
 
     const player = game.players[game.currentPlayerIndex];
     if (player.id !== socket.id) {
@@ -156,15 +145,51 @@ io.on('connection', (socket) => {
     const hasLost = game.incorrectGuesses.length >= 10;
 
     if (isWordGuessed) {
-      game.isGameOver = true;
-      game.isWinner = true;
+      game.isRoundOver = true;
+      game.roundWinner = 'guesser';
+      game.roundMessage = `Goed gedaan! jullie bebben het woord geraden.`;
+      game.players[game.currentPlayerIndex].score++; // Geef de rader een punt
     } else if (hasLost) {
-      game.isGameOver = true;
-      game.isWinner = false;
+      game.isRoundOver = true;
+      game.roundWinner = 'setter';
+      game.roundMessage = `Helaas, het woord was '${game.secretWord}'.`;
+      game.players[game.wordSetterIndex].score++; // Geef de woordzetter een punt
     } else {
       advanceTurn(game);
     }
 
+    io.to(gameId).emit('gameUpdate', game);
+  });
+
+  socket.on('startNextRound', ({ gameId }) => {
+    const game = games[gameId];
+    if (!game || !game.isRoundOver) return;
+
+    // Reset ronde-state
+    game.isRoundOver = false;
+    game.secretWord = null;
+    game.word = '';
+    game.correctGuesses = [];
+    game.incorrectGuesses = [];
+    game.roundWinner = null;
+    game.roundMessage = '';
+
+    // Roteer de woordzetter
+    game.wordSetterIndex = (game.wordSetterIndex + 1) % game.players.length;
+    game.currentRound++;
+
+    // Bepaal de volgende rader, sla de nieuwe woordzetter over
+    game.currentPlayerIndex = (game.wordSetterIndex + 1) % game.players.length;
+
+    io.to(gameId).emit('gameUpdate', game);
+  });
+
+  socket.on('stopGame', ({ gameId }) => {
+    const game = games[gameId];
+    // Alleen de creator kan het spel stoppen
+    if (!game || game.creator !== socket.id) return;
+
+    game.isGameFinished = true;
     io.to(gameId).emit('gameUpdate', game);
   });
 
@@ -197,7 +222,7 @@ io.on('connection', (socket) => {
         game.currentPlayerIndex--;
     }
 
-    io.to(gameId).emit('gameUpdate', game);
+    socket.to(gameId).emit('gameUpdate', game);
   });
 
 

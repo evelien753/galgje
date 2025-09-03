@@ -2,28 +2,28 @@ import React from 'react';
 import HangmanDrawing from './HangmanDrawing';
 import Keyboard from './Keyboard';
 
-const GameScreen = ({ gameState, isCreator, gameId, makeGuess, resetGame, isDisabled, activePlayerName }) => {
+const GameScreen = ({ gameState, gameId, makeGuess, isDisabled, amIWordSetter, amICreator, stopGame, activePlayerName, isMyTurn }) => {
   if (!gameState) return <div>Spel laden...</div>;
 
   const turnIndicator = () => {
-      if (isCreator) {
-          return <p className="turn-indicator">Kijken naar: {activePlayerName}</p>;
+      if (amIWordSetter) {
+          return <p className="turn-indicator">Jij bent de woordzetter. De anderen raden.</p>;
       }
-      if (isDisabled) {
-          return <p className="turn-indicator">Wachten op je beurt. Aan de beurt: {activePlayerName}</p>;
-      } else {
+      if (isMyTurn) {
           return <p className="turn-indicator">Jij bent aan de beurt!</p>;
+      } else {
+          return <p className="turn-indicator">Wachten op je beurt. Aan de beurt: {activePlayerName}</p>;
       }
   }
 
   return (
     <div className="game-container">
       <div className="game-header">
-        <h1>Galgje</h1>
-        <button onClick={resetGame} className="quit-button">Terug naar Start</button>
+        <h1>Galgje - Ronde {gameState.currentRound}</h1>
+        {amICreator && <button onClick={stopGame} className="quit-button">Stop Spel</button>}
       </div>
       <p className="game-id-display">Spel ID: {gameId}</p>
-      <p className="game-id-display">Spelers: {gameState.players.map(p => p.name).join(', ')}</p>
+      <p className="game-id-display">Spelers: {gameState.players.map(p => `${p.name} (${p.score})`).join(', ')}</p>
       
       {turnIndicator()}
 
@@ -31,7 +31,7 @@ const GameScreen = ({ gameState, isCreator, gameId, makeGuess, resetGame, isDisa
       
       <p className="word-display">{gameState.word}</p>
       
-      {isCreator && gameState.secretWord && (
+      {amIWordSetter && gameState.secretWord && (
           <p className="secret-word-display">Geheim woord: {gameState.secretWord}</p>
       )}
       
