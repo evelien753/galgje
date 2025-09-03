@@ -2,8 +2,19 @@ import React from 'react';
 import HangmanDrawing from './HangmanDrawing';
 import Keyboard from './Keyboard';
 
-const GameScreen = ({ gameState, isCreator, gameId, makeGuess, resetGame }) => {
+const GameScreen = ({ gameState, isCreator, gameId, makeGuess, resetGame, isDisabled, activePlayerName }) => {
   if (!gameState) return <div>Spel laden...</div>;
+
+  const turnIndicator = () => {
+      if (isCreator) {
+          return <p className="turn-indicator">Kijken naar: {activePlayerName}</p>;
+      }
+      if (isDisabled) {
+          return <p className="turn-indicator">Wachten op je beurt. Aan de beurt: {activePlayerName}</p>;
+      } else {
+          return <p className="turn-indicator">Jij bent aan de beurt!</p>;
+      }
+  }
 
   return (
     <div className="game-container">
@@ -12,27 +23,24 @@ const GameScreen = ({ gameState, isCreator, gameId, makeGuess, resetGame }) => {
         <button onClick={resetGame} className="quit-button">Terug naar Start</button>
       </div>
       <p className="game-id-display">Spel ID: {gameId}</p>
+      <p className="game-id-display">Spelers: {gameState.players.map(p => p.name).join(', ')}</p>
       
+      {turnIndicator()}
+
       <HangmanDrawing incorrectGuesses={gameState.incorrectGuesses.length} />
       
       <p className="word-display">{gameState.word}</p>
       
-      {/* Toon het geheime woord alleen aan de maker van het spel */}
       {isCreator && gameState.secretWord && (
           <p className="secret-word-display">Geheim woord: {gameState.secretWord}</p>
       )}
       
       <p>Foute gokken: {gameState.incorrectGuesses.join(', ')}</p>
-      
-      {/* Toon de lijst met spelers */}
-      {gameState.players && gameState.players.length > 0 && (
-        <p>Spelers: {gameState.players.map(p => p.name).join(', ')}</p>
-      )}
 
       <Keyboard 
         onGuess={makeGuess} 
         guessedLetters={[...gameState.correctGuesses, ...gameState.incorrectGuesses]}
-        isDisabled={isCreator}
+        isDisabled={isDisabled}
       />
     </div>
   );

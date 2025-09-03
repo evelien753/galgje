@@ -133,11 +133,23 @@ function App() {
 
   const renderContent = () => {
     const isCreator = gameState?.creator === socketId;
+    const activePlayer = gameState?.players[gameState.currentPlayerIndex];
+    const isMyTurn = activePlayer?.id === socketId;
+
+    const keyboardDisabled = isCreator || !isMyTurn;
 
     if (screen === 'game' && gameState?.isGameOver) {
       return (
         <>
-          <GameScreen gameState={gameState} isCreator={isCreator} gameId={gameId} makeGuess={makeGuess} resetGame={resetGame} isDisabled={isCreator} />
+          <GameScreen 
+            gameState={gameState} 
+            isCreator={isCreator} 
+            gameId={gameId} 
+            makeGuess={makeGuess} 
+            resetGame={resetGame} 
+            isDisabled={true} // Keyboard altijd uit bij game over
+            activePlayerName={activePlayer?.name}
+          />
           <GameOverPopup gameState={gameState} isCreator={isCreator} resetGame={resetGame} />
         </>
       );
@@ -157,7 +169,15 @@ function App() {
         );
       case 'game':
         if (!gameState) return <div>Spel herstellen...</div>;
-        return <GameScreen gameState={gameState} isCreator={isCreator} gameId={gameId} makeGuess={makeGuess} resetGame={resetGame} isDisabled={isCreator} />;
+        return <GameScreen 
+            gameState={gameState} 
+            isCreator={isCreator} 
+            gameId={gameId} 
+            makeGuess={makeGuess} 
+            resetGame={resetGame} 
+            isDisabled={keyboardDisabled}
+            activePlayerName={activePlayer?.name}
+        />;
       case 'loading':
         return <div>Laden...</div>;
       default:
